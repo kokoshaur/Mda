@@ -1,7 +1,7 @@
 #include "Generator.cpp"
 #define ONE_STEP 800
 
-int main(int argc, char* argv[])
+int main(int argc, char* argv[])//кокошар лошар
 {
 	Generator r("Test.wav");
 
