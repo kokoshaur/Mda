@@ -140,6 +140,7 @@
   <ItemGroup>
     <ClCompile Include="Generator.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MatrixFlexer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="subj.h" />

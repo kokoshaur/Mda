@@ -1,10 +1,14 @@
 #define _USE_MATH_DEFINES
+#include <complex>
 #include <iostream>
 #include <string>
 #include <Windows.h>
 #include <iostream>
 #include <fstream>
+#include <vector>
+
 #include "subj.h"
+#include "MatrixFlexer.cpp"
 
 class Generator {
 private:
@@ -67,13 +71,13 @@ public:
 		out.setf(std::ios::fixed);
         for(int i = 0; i < count; i++)
         {
-	        FFT next = Funct(data, num, num + size);
-
             std::cout.precision(3);
             std::cout.setf(std::ios::fixed);
-            std::cout << num << " - " << num+size << ": " << next.A << "," << next.B << std::endl;
+
+            FFT a = Funct(data, num, num + size, i);
+            std::cout << num << " - " << num+size << ": " << a.A << "," << a.B << std::endl;
         	
-            FILE* f1 = fopen((std::to_string(num) + ".wav").c_str(), "w+b");;
+            FILE* f1 = fopen((std::to_string(num) + ".wav").c_str(), "w+b");
 
             fwrite(&stream, sizeof(stream), 1, f1);
             fwrite(&data[num], sizeof(short), stream.subchunk2Size / 2, f1);
@@ -86,37 +90,26 @@ public:
         out.close();
 	}
 	
-    FFT Funct(short* data, int start, int fin) {
-        double summaRe = 0, summaIm = 0, Arg = 0;
-        double *Ak = new double[fin - start];
-
-        FFT ansver;
-        ansver.A = 0;
-        ansver.B = 0;
+    FFT Funct(short* data, int start, int fin, int k)
+	{
+        std::vector<double> f(fin - start);
         for (int i = 0; i < fin - start; i++)
+            f[i] = data[start + i];
+
+        FFT a;
+
+        for (std::complex<double> element : MatrixFlexer::directFourierTransform(f))
         {
-            summaRe = 0; summaIm = 0;
-            for (int j = 0; j < fin - start; j++)
-            {
-                Arg = 2.0 * M_PI * j * i / (fin - start);
-                summaRe += cos(Arg) * (data[start + j]);
-                summaIm += sin(Arg) * (data[start + j]);
-            }
-            Ak[i] = sqrt(summaRe * summaRe + summaIm * summaIm);
-            out << Ak[i] << std::endl;
-
-        	if(ansver.A < Ak[i])
-        	{
-                ansver.B = ansver.A;
-                ansver.A = Ak[i];
-            }
-            else if (ansver.B < Ak[i])
-                ansver.B = Ak[i];
+	        if (element.real() > a.A)
+	        {
+                a.B = a.A;
+                a.A = element.real();
+	        }else if (element.real() > a.B)
+	        {
+                a.B = element.real();
+	        }
         }
-
-        ansver.A /= stream.sampleRate;
-        ansver.B /= stream.sampleRate;
 		
-        return ansver;
+        return a;
     }
 };

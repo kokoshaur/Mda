@@ -16,6 +16,6 @@ struct WAVHEADER
 };
 
 struct FFT {
-    long double A;
-    long double B;
+    long double A = 0;
+    long double B = 0;
 };
