@@ -15,6 +15,7 @@ private:
     std::string path;
 	WAVHEADER stream;
     std::ofstream out;
+    std::ofstream mda;
 	
     double Func(int index, double frequency)
     {
@@ -27,89 +28,96 @@ public:
         this->path = path;
 	}
 
-    short* Wave(double frequency)
+    unsigned short* Wave(double frequency)
 	{
-        short* data = new short[stream.subchunk2Size];
+        unsigned short* data = new unsigned short[stream.subchunk2Size];
 
         for (int index = 0; index < stream.subchunk2Size; index++)
         {
-            data[index] = (short)(Func(index, frequency) * SHRT_MAX);// Приводим уровень к амплитуде от 32767 до -32767.
+            data[index] = (unsigned short)(Func(index, frequency) * SHRT_MAX);// Приводим уровень к амплитуде от 32767 до -32767.
         }
         return data;
     }
 
-    short* LoadWave(std::string pathTo)
+    unsigned short* LoadWave(std::string pathTo)
 	{
         FILE* f1;
         f1 = fopen(pathTo.c_str(), "rb");
         fread(&stream, sizeof(stream), 1, f1);
-
-        short* data = new short[stream.subchunk2Size / 2];
 		
-        fread(data, sizeof(short), stream.subchunk2Size/2, f1);
+        unsigned short* data = new unsigned short[stream.subchunk2Size];
+		
+        fread(data, stream.blockAlign, stream.subchunk2Size, f1);
         fclose(f1);
-
+		
         return data;
 	}
 
-    void SaveWave(short* data)
+    void SaveWave(unsigned short* data)
     {
         FILE* f1;
         f1 = fopen(path.c_str(), "w+b");
-		
         fwrite(&stream, sizeof(stream), 1, f1);
-        fwrite(data, sizeof(short), stream.subchunk2Size/2, f1);
+        fwrite(data, stream.blockAlign, stream.subchunk2Size, f1);
 		
         fclose(f1);
     }
 
-	void SaveByStep(short* data, unsigned long size, int count)
+	void SaveByStep(unsigned short* data, unsigned long size, int count)
 	{
         int num = 0;
         stream.subchunk2Size = size;
-        out.open("ansver.txt");
 		out.setf(std::ios::fixed);
         for(int i = 0; i < count; i++)
-        {
-            std::cout.precision(3);
-            std::cout.setf(std::ios::fixed);
+            num = save(data, num, size, i);
+	}
 
-            FFT a = Funct(data, num, num + size, i);
-            std::cout << num << " - " << num+size << ": " << a.A << "," << a.B << std::endl;
-        	
-            FILE* f1 = fopen((std::to_string(num) + ".wav").c_str(), "w+b");
+	int save(unsigned short* data, int num, int size, int i)
+	{
+        out.open("before\\ansver" + std::to_string(i) + ".txt");
+        mda.open("after\\MDA" + std::to_string(i) + ".txt");
+        std::cout.precision(3);
+        std::cout.setf(std::ios::fixed);
 
-            fwrite(&stream, sizeof(stream), 1, f1);
-            fwrite(&data[num], sizeof(short), stream.subchunk2Size / 2, f1);
+        FFT a = Funct(data, num, num + size, i);
+        std::cout << num << " - " << num + size << ": " << a.A << "," << a.B  << std::endl;
 
-            num += size;
+        FILE* f1 = fopen((std::to_string(num) + ".wav").c_str(), "w+b");
 
-            fclose(f1);
-        	
-        }
+        fwrite(&stream, sizeof(stream), 1, f1);
+        fwrite(&data[num], stream.blockAlign, stream.subchunk2Size, f1);
+
+        fclose(f1);
         out.close();
+
+		return num + size;
 	}
 	
-    FFT Funct(short* data, int start, int fin, int k)
+    FFT Funct(unsigned short* data, int start, int fin, int k)
 	{
-        std::vector<double> f(fin - start);
-        for (int i = 0; i < fin - start; i++)
-            f[i] = data[start + i];
-
-        FFT a;
-
-        for (std::complex<double> element : MatrixFlexer::directFourierTransform(f))
+        std::vector<complex<long double>> u(stream.subchunk2Size);
+        for (int i = 0; i < stream.subchunk2Size/2; i++)
         {
-	        if (element.real() > a.A)
+            u[i] = data[start + i];
+            out << data[start + i] << std::endl;
+        }
+        FFT a;
+        vector<vector<complex<long double>>> F = MatrixFlexer::makeMatrixFourier(800);
+
+        for (std::complex<double> element : MatrixFlexer::matrixProduct(F, u, 0))
+        {
+            mda << abs(element) << std::endl;
+	        if (abs(element) > a.A)
 	        {
                 a.B = a.A;
-                a.A = element.real();
+                a.A = abs(element);
 	        }else if (element.real() > a.B)
 	        {
-                a.B = element.real();
+                a.B = abs(element);
 	        }
         }
-		
+
+        mda.close();
         return a;
     }
 };

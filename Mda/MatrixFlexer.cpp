@@ -1,9 +1,11 @@
 #define _USE_MATH_DEFINES
 #include <vector>
 #include <complex>
+using namespace std;
 static class MatrixFlexer
 {
 public:
+	static const int SIZE = 800;
 	static std::vector<std::vector<std::complex<double>>> createMatrixF(int n) {
 		std::complex<double> comp;
 		comp = -1;
@@ -195,11 +197,64 @@ public:
 		for (int i = 0; i < v1.size(); i++) {
 			if (phase_spectrum_v1[i].real() != phase_spectrum_v2[i].real() && abs(phase_spectrum_v1[i].real() - phase_spectrum_v2[i].real()) > eps) return true;
 		}
-
-
-		//свойство сдвига по времени выполняется в любом случае, потому что я делаю
-		//преобразование только по игрекам, не учитывая значения иксов
-		//то есть сам спектр не изменяется, а только сдвигается по оси времени
+		
 		return false;
+	}
+
+	static void calcFuncValues(double T, double f1, vector<complex<long double>>& u) {
+		double tmp = 0;
+		for (double t = -T / 2; t <= T / 2; t += 0.001) {
+			tmp = sin(2 * M_PI * f1 * t);
+			u.emplace_back(tmp, 0);
+		}
+	}
+
+	static std::vector<std::vector<std::complex<long double>>> makeMatrixFourier(unsigned int N) {
+		std::vector<std::vector<std::complex<long double>>> matrix_F(N);
+		for (int i = 0; i < N; i++) {
+			matrix_F[i].resize(N);
+			for (int j = 0; j < N; j++) {
+				complex<long double> complexNum(cos(2 * M_PI * i * j / N), sin(2 * M_PI * i * j / N));
+				matrix_F[i][j] = complexNum;
+			}
+		}
+		return matrix_F;
+	}
+
+	static std::vector<std::vector<std::complex<long double>>> makeConjTransMatrixFourirer(std::vector<std::vector<std::complex<long double>>> F, int N) {
+		std::vector<std::vector<std::complex<long double>>> matrix_FH(N);
+		for (int i = 0; i < N; i++) {
+			matrix_FH[i].resize(N);
+			for (int j = 0; j < N; j++) {
+				matrix_FH[i][j] = conj(F[j][i]);
+			}
+		}
+
+		return matrix_FH;
+	}
+
+	static vector<complex<long double>> matrixProduct(std::vector<std::vector<std::complex<long double>>> matrix, vector<complex<long double>>& u, int num) {
+		vector<complex<long double>> result(SIZE);
+		int ind = num * SIZE;
+		for (int i = 0; i < SIZE; i++) {
+			complex<long double> sum = 0;
+			for (int k = 0; k < SIZE; k++, ind++) {
+				sum += (u[ind] * matrix[k][i]);
+
+			}
+			ind = num * SIZE;
+			result[i] = sum;
+		}
+		return result;
+	}
+
+	static pair<long double, long double> parsevalEquality(vector<complex<long double>> u, vector<complex<long double>> U, size_t N) {
+		long double sum1 = 0;
+		long double sum2 = 0;
+		for (int i = 0; i < u.size(); i++) {
+			sum1 += real(pow(u[i], 2));
+			sum2 += pow(abs(U[i]), 2);
+		}
+		return make_pair(sum1, sum2 / N);
 	}
 };
